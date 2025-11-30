@@ -9,7 +9,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -71,8 +70,8 @@ func startHTTPServer(cfg *appConfig.AppConfig) {
 	opts := []config.Option{
 		server.WithHostPorts(cfg.Server.Host + ":" + cfg.Server.Port),
 		server.WithMaxRequestBodySize(1024 * 1024 * 200), // 200MB
-		server.WithReadTimeout(30 * time.Second),
-		server.WithWriteTimeout(30 * time.Second),
+		server.WithReadTimeout(0),                        // Infinite for SSE/Long polling
+		server.WithWriteTimeout(0),                       // Infinite for SSE
 	}
 
 	s := server.New(opts...)

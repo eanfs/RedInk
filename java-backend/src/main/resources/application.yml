@@ -1,0 +1,68 @@
+server:
+  port: 12398
+  host: 0.0.0.0
+
+spring:
+  application:
+    name: redink-java-backend
+  profiles:
+    active: dev
+    
+  # 日志配置
+  logging:
+    level:
+      com.redink: DEBUG
+      org.springframework.ai: DEBUG
+    pattern:
+      console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+      file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/redink.log
+      max-size: 10MB
+      max-history: 30
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+      
+  # HTTP客户端配置
+  webflux:
+    http-client:
+      connect-timeout: 30s
+      response-timeout: 300s
+# In application.yml
+  ai:
+    # AI配置
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:}
+      chat:
+        model: gpt-3.5-turbo
+      image:
+        model: dall-e-3
+
+# 注意: 当前只支持 OpenAI 图像生成功能
+# 如需文本生成功能，请配置相应的 AI 服务
+
+# 管理端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      
+# 自定义配置
+redink:
+  cors:
+    origins: http://localhost:5173,http://localhost:3000
+  history:
+    dir: history
+    max-records: 1000
+  image:
+    max-concurrent: 15
+    auto-retry: 3

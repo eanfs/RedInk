@@ -23,15 +23,23 @@ type TextGenerator interface {
 type ImageOption func(*ImageOptions)
 
 type ImageOptions struct {
-	AspectRatio string
-	Size        string
-	NegativePrompt string
-	ReferenceImage []byte
+	AspectRatio     string
+	Size            string
+	NegativePrompt  string
+	ReferenceImage  []byte
+	ReferenceImages [][]byte
+	Model           string
 }
 
 func WithAspectRatio(ratio string) ImageOption {
 	return func(o *ImageOptions) {
 		o.AspectRatio = ratio
+	}
+}
+
+func WithImageModel(model string) ImageOption {
+	return func(o *ImageOptions) {
+		o.Model = model
 	}
 }
 
@@ -44,6 +52,12 @@ func WithSize(size string) ImageOption {
 func WithReferenceImage(image []byte) ImageOption {
 	return func(o *ImageOptions) {
 		o.ReferenceImage = image
+	}
+}
+
+func WithReferenceImages(images [][]byte) ImageOption {
+	return func(o *ImageOptions) {
+		o.ReferenceImages = images
 	}
 }
 
