@@ -233,7 +233,7 @@ const loadShowcaseImages = async () => {
   try {
     const response = await fetch('/assets/showcase_manifest.json')
     const data = await response.json()
-    const originalImages = data.covers || []
+    const originalImages = Array.isArray(data?.covers) ? data.covers : []
 
     // 复制图片数组3次以实现无缝循环
     showcaseImages.value = [...originalImages, ...originalImages, ...originalImages]
@@ -316,10 +316,11 @@ const loadRecent = async () => {
   try {
     const res = await getHistoryList(1, 4)
     if (res.success) {
-      recentRecords.value = res.records
+      recentRecords.value = Array.isArray(res.records) ? res.records : []
     }
   } catch (e) {
     // ignore
+    recentRecords.value = []
   }
 }
 

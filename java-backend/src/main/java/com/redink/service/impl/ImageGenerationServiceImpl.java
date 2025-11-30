@@ -9,6 +9,7 @@ import net.coobird.thumbnailator.Thumbnails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.image.ImageModel;
+import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.OpenAiImageOptions;
@@ -246,7 +247,11 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
             logger.info("生成图片提示词: {}", prompt);
 
             // 创建图片提示（使用默认选项）
-            ImagePrompt imagePrompt = new ImagePrompt(prompt);
+            ImageOptions imageOptions = OpenAiImageOptions.builder()
+                    .quality("hd")
+                    .height(1024)
+                    .width(768).build();
+            ImagePrompt imagePrompt = new ImagePrompt(prompt, imageOptions);
 
             // 调用OpenAI图片生成API
             var response = openAiImageModel.call(imagePrompt);
