@@ -1,0 +1,86 @@
+# OpenAPI Specification for RedInk Java Backend
+
+openapi: 3.0.0
+info:
+  title: RedInk API
+  description: API documentation for RedInk AI图文生成器
+  version: 1.0.0
+servers:
+  - url: http://localhost:12398/api
+    description: Local server
+
+paths:
+  /outline:
+    post:
+      summary: 生成大纲
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic:
+                  type: string
+                  description: 生成图文的主题
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: base64
+                  description: 上传的图片（可选）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  pages:
+                    type: array
+                    items:
+                      type: string
+                    example: ['标题1', '标题2', '标题3']
+        '400':
+          description: 参数错误
+        '500':
+          description: 服务器错误
+
+  /generate:
+    post:
+      summary: 生成图片
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic:
+                  type: string
+                  description: 生成图文的主题
+                pages:
+                  type: array
+                  items:
+                    type: string
+                  description: 每一页的内容
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  taskId:
+                    type: string
+                    example: 'task_1234567890'
+        '400':
+          description: 参数错误
+        '500':
+          description: 服务器错误
