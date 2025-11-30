@@ -1,5 +1,6 @@
 package com.redink.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redink.config.ConfigManager;
 import com.redink.model.TaskState;
@@ -41,6 +42,7 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
 
     private final ConfigManager configManager;
     private final ImageModel openAiImageModel;
+    private final ObjectMapper objectMapper;
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(15);
     private final Map<String, TaskState> taskStates = new ConcurrentHashMap<>();
@@ -52,6 +54,7 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
                                      OpenAiImageModel openAiImageModel) {
         this.configManager = configManager;
         this.openAiImageModel = openAiImageModel;
+        this.objectMapper = new ObjectMapper();
     }
     
     @Override
@@ -90,9 +93,6 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
             Files.createDirectories(taskDir);
             logger.info("创建任务目录: {}", taskDir);
 
-            // 发送开始事件
-            sendSseEvent(emitter, "progress", createProgressData(0, pages.size(), "开始生成图片..."));
-
             int completed = 0;
             int failed = 0;
             List<Integer> failedIndices = new ArrayList<>();
@@ -100,12 +100,31 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
             // 逐页生成图片
             for (int i = 0; i < pages.size(); i++) {
                 com.redink.model.Page page = pages.get(i);
+
+                // 检查是否需要发送批量开始事件
+                if (page.getType().equals("content") && (i == 0 || !pages.get(i - 1).getType().equals("content"))) {
+                    int contentCount = (int) pages.stream().filter(p -> p.getType().equals("content")).count();
+                    sendSseEvent(emitter, "progress", JSONUtil.toJsonStr(Map.of(
+                        "status", "batch_start",
+                        "message", "开始顺序生成 " + contentCount + " 页内容...",
+                        "current", completed + 1,
+                        "total", pages.size(),
+                        "phase", "content"
+                    )));
+                }
+
                 try {
                     logger.info("开始生成第 {} 张图片, taskId={}", i + 1, taskId);
 
-                    // 发送进度更新
-                    sendSseEvent(emitter, "progress",
-                        createProgressData(completed, pages.size(), "正在生成第 " + (i + 1) + " 张图片..."));
+                    // 发送进度更新 - 正在生成
+                    sendSseEvent(emitter, "progress", JSONUtil.toJsonStr(Map.of(
+                        "index", page.getIndex(),
+                        "status", "generating",
+                        "message", page.getType().equals("cover") ? "正在生成封面..." : ("正在生成第 " + (page.getIndex() + 1) + " 张图片..."),
+                        "current", completed + 1,
+                        "total", pages.size(),
+                        "phase", page.getType()
+                    )));
 
                     // 生成单张图片
                     byte[] referenceImage = (userImages != null && userImages.length > 0)
@@ -121,11 +140,12 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
                         logger.info("第 {} 张图片生成成功", i + 1);
 
                         // 发送单张完成事件
-                        sendSseEvent(emitter, "imageCompleted", Map.of(
-                            "index", i,
-                            "filename", result.filename,
-                            "url", "/api/images/" + taskId + "/" + result.filename
-                        ));
+                        sendSseEvent(emitter, "complete", JSONUtil.toJsonStr(Map.of(
+                            "index", page.getIndex(),
+                            "status", "done",
+                            "image_url", "/api/images/" + taskId + "/" + result.filename,
+                            "phase", page.getType()
+                        )));
                     } else {
                         // 生成失败
                         failed++;
@@ -134,10 +154,10 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
                         logger.warn("第 {} 张图片生成失败: {}", i + 1, result.error);
 
                         // 发送单张失败事件
-                        sendSseEvent(emitter, "imageFailed", Map.of(
+                        sendSseEvent(emitter, "imageFailed", JSONUtil.toJsonStr(Map.of(
                             "index", i,
                             "error", result.error
-                        ));
+                        )));
                     }
 
                 } catch (Exception e) {
@@ -146,24 +166,32 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
                     taskState.getFailed().put(i, e.getMessage());
                     logger.error("第 {} 张图片生成异常", i + 1, e);
 
-                    sendSseEvent(emitter, "imageFailed", Map.of(
+                    sendSseEvent(emitter, "imageFailed", JSONUtil.toJsonStr(Map.of(
                         "index", i,
                         "error", e.getMessage()
-                    ));
+                    )));
                 }
             }
 
             // 发送完成事件
             boolean success = failed == 0;
-            sendSseEvent(emitter, "finish", Map.of(
+
+            // 整理图片列表，按索引排序
+            List<String> images = taskState.getGenerated().entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue)
+                .toList();
+
+            sendSseEvent(emitter, "finish", JSONUtil.toJsonStr(Map.of(
                 "success", success,
-                "taskId", taskId,
+                "task_id", taskId, // 使用下划线格式，与用户示例一致
+                "images", images,
                 "total", pages.size(),
                 "completed", completed,
                 "failed", failed,
-                "failedIndices", failedIndices,
-                "message", success ? "所有图片生成完成" : ("生成完成，失败 " + failed + " 张")
-            ));
+                "failed_indices", failedIndices // 使用下划线格式，与用户示例一致
+            )));
 
             logger.info("图片生成任务完成: taskId={}, total={}, success={}, failed={}",
                 taskId, pages.size(), completed, failed);
@@ -171,7 +199,7 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
         } catch (Exception e) {
             logger.error("图片生成任务异常: taskId={}", taskId, e);
             try {
-                sendSseEvent(emitter, "error", Map.of("message", "生成失败: " + e.getMessage()));
+                sendSseEvent(emitter, "error", JSONUtil.toJsonStr(Map.of("message", "生成失败: " + e.getMessage())));
             } catch (IOException ex) {
                 logger.warn("发送SSE事件失败", ex);
             }
@@ -193,28 +221,43 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
             GenerateResult result = generateSingleImage(page, taskId, null, fullOutline, userTopic, null);
 
             if (result.success && result.filename != null) {
-                return Map.of(
+                Map<String, Object> successResult = Map.of(
                     "success", true,
                     "index", page.getIndex(),
                     "filename", result.filename,
                     "url", "/api/images/" + taskId + "/" + result.filename
                 );
+                try {
+                    return objectMapper.readValue(JSONUtil.toJsonStr(successResult), Map.class);
+                } catch (Exception jsonEx) {
+                    return successResult;
+                }
             } else {
-                return Map.of(
+                Map<String, Object> failureResult = Map.of(
                     "success", false,
                     "index", page.getIndex(),
                     "error", result.error,
                     "retryable", true
                 );
+                try {
+                    return objectMapper.readValue(JSONUtil.toJsonStr(failureResult), Map.class);
+                } catch (Exception jsonEx) {
+                    return failureResult;
+                }
             }
         } catch (Exception e) {
             logger.error("重试图片生成失败", e);
-            return Map.of(
+            Map<String, Object> errorResult = Map.of(
                 "success", false,
                 "index", page.getIndex(),
                 "error", e.getMessage(),
                 "retryable", true
             );
+            try {
+                return objectMapper.readValue(JSONUtil.toJsonStr(errorResult), Map.class);
+            } catch (Exception jsonEx) {
+                return errorResult;
+            }
         }
     }
 
@@ -249,7 +292,7 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
             // 创建图片提示（使用默认选项）
             ImageOptions imageOptions = OpenAiImageOptions.builder()
                     .quality("hd")
-                    .height(1024)
+                    .height(1280)
                     .width(768).build();
             ImagePrompt imagePrompt = new ImagePrompt(prompt, imageOptions);
 
@@ -271,8 +314,8 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
                 return new GenerateResult(page.getIndex(), false, null, "图片数据为空");
             }
 
-            // 保存图片
-            String filename = String.format("page_%03d.png", page.getIndex());
+            // 保存图片 - 使用与用户示例一致的文件名格式
+            String filename = String.format("%d.png", page.getIndex());
             Path imagePath = Paths.get("history", taskId, filename);
             Files.write(imagePath, imageData);
 
@@ -329,15 +372,19 @@ public class ImageGenerationServiceImpl implements ImageGenerationService {
     /**
      * 发送SSE事件
      */
-    private void sendSseEvent(SseEmitter emitter, String event, Object data) throws IOException {
-        emitter.send(SseEmitter.event()
-                .name(event)
-                .data(data));
+    private void sendSseEvent(SseEmitter emitter, String event, String jsonData) throws IOException {
+        // 检查jsonData是否已经包含JSON前缀，避免重复
+        if (jsonData.startsWith("data:")) {
+            emitter.send(SseEmitter.event()
+                    .name(event)
+                    .data(jsonData.replace("data:", ""), MediaType.APPLICATION_JSON));
+        } else {
+            emitter.send(SseEmitter.event()
+                    .name(event)
+                    .data(jsonData, MediaType.APPLICATION_JSON));
+        }
     }
     
-    private Map<String, Object> createProgressData(int current, int total, String message) {
-        return Map.of("current", current, "total", total, "message", message);
-    }
     
     /**
      * 图片生成结果

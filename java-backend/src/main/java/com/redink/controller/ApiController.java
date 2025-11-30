@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -130,7 +132,19 @@ public class ApiController {
 
             logger.info("开始图片生成任务: taskId={}, pages={}", taskId, pageObjects.size());
 
-            return imageService.generateImages(pageObjects, taskId, fullOutline, userTopic, userImages);
+            // 设置 SSE 响应头
+            SseEmitter emitter = imageService.generateImages(pageObjects, taskId, fullOutline, userTopic, userImages);
+
+            // 添加 Python 后端相同的 SSE 响应头
+            org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes();
+            jakarta.servlet.http.HttpServletResponse response = ((org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getResponse();
+
+            if (response != null) {
+                response.setHeader("Cache-Control", "no-cache");
+                response.setHeader("X-Accel-Buffering", "no");
+            }
+
+            return emitter;
 
         } catch (Exception e) {
             logger.error("图片生成请求异常", e);

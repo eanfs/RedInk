@@ -75,27 +75,48 @@ export function generateImages(
   const eventSource = new EventSource(`${API_BASE_URL}/generate?pages=${encodeURIComponent(JSON.stringify(pages))}&task_id=${taskId || ''}`)
 
   eventSource.addEventListener('progress', (e: MessageEvent) => {
-    const data = JSON.parse(e.data) as ProgressEvent
-    onProgress(data)
+    console.debug('[SSE Debug] Progress event:', JSON.stringify(e.data))
+    try {
+      const data = JSON.parse(e.data) as ProgressEvent
+      onProgress(data)
+    } catch (err: any) {
+      console.error('[SSE Debug] Progress 解析失败:', err, JSON.stringify(e.data))
+    }
   })
 
   eventSource.addEventListener('complete', (e: MessageEvent) => {
-    const data = JSON.parse(e.data) as ProgressEvent
-    onComplete(data)
+    console.debug('[SSE Debug] Complete event:', JSON.stringify(e.data))
+    try {
+      const data = JSON.parse(e.data) as ProgressEvent
+      onComplete(data)
+    } catch (e: any) {
+      console.error('[SSE Debug] Complete 解析失败:', e, JSON.stringify(e.data))
+    }
   })
 
   eventSource.addEventListener('error', (e: MessageEvent) => {
-    const data = JSON.parse(e.data) as ProgressEvent
-    onError(data)
+    console.debug('[SSE Debug] Error event:', JSON.stringify(e.data))
+    try {
+      const data = JSON.parse(e.data) as ProgressEvent
+      onError(data)
+    } catch (e: any) {
+      console.error('[SSE Debug] Error 解析失败:', e, JSON.stringify(e.data))
+    }
   })
 
   eventSource.addEventListener('finish', (e: MessageEvent) => {
-    const data = JSON.parse(e.data) as FinishEvent
-    onFinish(data)
-    eventSource.close()
+    console.debug('[SSE Debug] Finish event:', JSON.stringify(e.data))
+    try {
+      const data = JSON.parse(e.data) as FinishEvent
+      onFinish(data)
+      eventSource.close()
+    } catch (e: any) {
+      console.error('[SSE Debug] Finish 解析失败:', e, JSON.stringify(e.data))
+    }
   })
 
   eventSource.onerror = (error) => {
+    console.error('[SSE Debug] 连接错误:', error)
     onStreamError(new Error('SSE 连接错误'))
     eventSource.close()
   }
@@ -418,14 +439,30 @@ export async function generateImagesPost(
       for (const line of lines) {
         if (!line.trim()) continue
 
-        const [eventLine, dataLine] = line.split('\n')
-        if (!eventLine || !dataLine) continue
-
-        const eventType = eventLine.replace('event: ', '').trim()
-        const eventData = dataLine.replace('data: ', '').trim()
+        console.debug('[SSE Debug] Raw message:', JSON.stringify(line))
 
         try {
+          // 更健壮的解析逻辑，支持多行数据
+          const eventLines = line.split('\n').filter(l => l.trim())
+
+          let eventType = ''
+          let eventData = ''
+
+          for (const eventLine of eventLines) {
+            if (eventLine.match(/^event:/i)) { // 不区分大小写，兼容event:前缀
+              eventType = eventLine.replace(/^event:\s*/i, '').trim()
+            } else if (eventLine.match(/^data:/i)) { // 不区分大小写，兼容data:前缀
+              eventData += eventLine.replace(/^data:\s*/i, '').trim()
+            }
+          }
+
+          if (!eventType) {
+            console.debug('[SSE Debug] Missing event type, skipping:', eventLines)
+            continue
+          }
+
           const data = JSON.parse(eventData)
+          console.debug('[SSE Debug] Parsed data:', JSON.stringify(data))
 
           switch (eventType) {
             case 'progress':
@@ -442,7 +479,7 @@ export async function generateImagesPost(
               break
           }
         } catch (e) {
-          console.error('解析 SSE 数据失败:', e)
+          console.error('[SSE Debug] 解析 SSE 数据失败:', e, '原始数据:', JSON.stringify(line))
         }
       }
     }
