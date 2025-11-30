@@ -1,6 +1,5 @@
 server:
-  port: 12398
-  host: 0.0.0.0
+  port: 8080
 
 spring:
   application:
@@ -32,16 +31,24 @@ spring:
     http-client:
       connect-timeout: 30s
       response-timeout: 300s
-# In application.yml
   ai:
-    # AI配置
     openai:
-      api-key: ${OPENAI_API_KEY:}
-      base-url: ${OPENAI_BASE_URL:}
+      # API密钥配置
+      api-key: ${OPENAI_API_KEY:c59185a8-2c7b-4a8b-baa3-f52971670635}
+      # 方舟大模型API地址
+      base-url: https://ark.cn-beijing.volces.com/api/
       chat:
-        model: gpt-3.5-turbo
+        options:
+          # 模型ID,需要替换为实际的接入点ID
+          model: ${OPENAI_MODEL_ID:ep-20250822222445-8zlp7}
+        # Chat接口路径,与OpenAI接口保持一致
+        completions-path: /v3/chat/completions
       image:
-        model: dall-e-3
+        options:
+          # 模型ID,需要替换为实际的接入点ID
+          model: ${OPENAI_MODEL_ID:ep-20251101111218-xvcnt}
+        # Chat接口路径,与OpenAI接口保持一致
+        completions-path: /v3/chat/completions
 
 # 注意: 当前只支持 OpenAI 图像生成功能
 # 如需文本生成功能，请配置相应的 AI 服务
@@ -54,8 +61,22 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: when_authorized
-      
+      show-details: always
+
+security:
+  # 跳过验证码校验的客户端
+  ignore-clients:
+    - test
+  oauth2:
+    accessToken:
+      ValiditySeconds: ${OAUTH2_VALIDITY_SECONDS:86400}
+    ignore:
+      urls:
+        - /webjars/**
+        - /v3/api-docs/**
+        - /doc.html
+        - /swagger-ui.html
+        - /api/**
 # 自定义配置
 redink:
   cors:

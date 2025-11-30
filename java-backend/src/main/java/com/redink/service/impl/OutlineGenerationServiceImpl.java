@@ -5,6 +5,7 @@ import com.redink.model.OutlineResult;
 import com.redink.model.Page;
 import com.redink.service.OutlineGenerationService;
 import com.redink.util.ImageUtils;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.messages.Message;
@@ -31,7 +32,7 @@ public class OutlineGenerationServiceImpl implements OutlineGenerationService {
     private static final Logger logger = LoggerFactory.getLogger(OutlineGenerationServiceImpl.class);
     
     private final ConfigManager configManager;
-    private final OpenAiChatModel chatModel;
+    private final ChatModel openAiChatModel;
 
     // 提示词模板
     private static final String OUTLINE_PROMPT = """
@@ -67,9 +68,9 @@ public class OutlineGenerationServiceImpl implements OutlineGenerationService {
         【特别的！！注意】直接给出大纲内容（不要有任何多余的说明，也就是你直接从[封面]开始，不要有针对用户的回应对话），请输出：
         """;
     
-    public OutlineGenerationServiceImpl(ConfigManager configManager, OpenAiChatModel chatModel) {
+    public OutlineGenerationServiceImpl(ConfigManager configManager, ChatModel chatModel) {
         this.configManager = configManager;
-        this.chatModel = chatModel;
+        this.openAiChatModel = chatModel;
     }
     
     @Override
@@ -115,7 +116,7 @@ public class OutlineGenerationServiceImpl implements OutlineGenerationService {
             Prompt aiPrompt = new Prompt(userMessage);
             
             // 调用 AI 服务
-            ChatResponse response = chatModel.call(aiPrompt);
+            ChatResponse response = openAiChatModel.call(aiPrompt);
             
             if (response == null || response.getResult() == null) {
                 logger.error("AI 服务返回空结果");

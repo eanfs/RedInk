@@ -208,16 +208,4 @@ public class ConfigManager {
         defaultConfig.put("providers", new HashMap<String, Object>());
         return defaultConfig;
     }
-    
-    /**
-     * 系统配置类
-     */
-    @Data
-    public static class SystemConfig {
-        private boolean debug = true;
-        private String host = "0.0.0.0";
-        private int port = 12398;
-        private String[] corsOrigins = {"http://localhost:5173", "http://localhost:3000"};
-        private String outputDir = "output";
-    }
 }
