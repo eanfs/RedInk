@@ -1,0 +1,19 @@
+{
+  "id" : "5113bf87-07e4-4769-9c01-94b58c2cec00",
+  "title" : "测试主题2",
+  "createdAt" : "2025-11-30T12:37:33.601308",
+  "updatedAt" : "2025-11-30T12:37:33.601308",
+  "outline" : {
+    "success" : true,
+    "outline" : "第二个测试大纲",
+    "pages" : [ ],
+    "hasImages" : true,
+    "error" : null
+  },
+  "images" : {
+    "taskId" : "test-456",
+    "generated" : null
+  },
+  "status" : "draft",
+  "thumbnail" : null
+}

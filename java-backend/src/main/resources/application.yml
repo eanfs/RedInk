@@ -36,7 +36,7 @@ spring:
       # API密钥配置
       api-key: ${OPENAI_API_KEY:c59185a8-2c7b-4a8b-baa3-f52971670635}
       # 方舟大模型API地址
-      base-url: https://ark.cn-beijing.volces.com/api/
+      base-url: https://ark.cn-beijing.volces.com/api
       chat:
         options:
           # 模型ID,需要替换为实际的接入点ID
@@ -44,11 +44,11 @@ spring:
         # Chat接口路径,与OpenAI接口保持一致
         completions-path: /v3/chat/completions
       image:
+        base-url: https://ark.cn-beijing.volces.com/api
+        images-path: /v3/images/generations
         options:
           # 模型ID,需要替换为实际的接入点ID
-          model: ${OPENAI_MODEL_ID:ep-20251101111218-xvcnt}
-        # Chat接口路径,与OpenAI接口保持一致
-        completions-path: /v3/chat/completions
+          model: ${OPENAI_IMAGE_MODEL_ID:ep-20251101111218-xvcnt}
 
 # 注意: 当前只支持 OpenAI 图像生成功能
 # 如需文本生成功能，请配置相应的 AI 服务

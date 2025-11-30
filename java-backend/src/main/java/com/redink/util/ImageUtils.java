@@ -147,4 +147,31 @@ public class ImageUtils {
         }
         return new int[]{0, 0};
     }
+
+    /**
+     * 从URL下载图片
+     */
+    public static byte[] downloadImage(String imageUrl) throws IOException {
+        try {
+            java.net.HttpURLConnection connection =
+                (java.net.HttpURLConnection) new java.net.URL(imageUrl).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(60000);
+
+            try (java.io.InputStream inputStream = connection.getInputStream();
+                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+                return outputStream.toByteArray();
+            }
+        } catch (Exception e) {
+            logger.error("下载图片失败: {}", imageUrl, e);
+            throw new IOException("下载图片失败: " + e.getMessage());
+        }
+    }
 }

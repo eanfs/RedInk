@@ -53,21 +53,24 @@ public class HistoryController {
             
             // 转换OutlineResult
             OutlineResult outline = new OutlineResult();
-            outline.setSuccess((Boolean) outlineMap.get("success"));
+            Object successObj = outlineMap.get("success");
+            outline.setSuccess(successObj != null ? (Boolean) successObj : false);
             outline.setOutline((String) outlineMap.get("outline"));
-            outline.setHasImages((Boolean) outlineMap.get("hasImages"));
+            Object hasImagesObj = outlineMap.get("hasImages");
+            outline.setHasImages(hasImagesObj != null ? (Boolean) hasImagesObj : false);
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> pagesMap = (List<Map<String, Object>>) outlineMap.get("pages");
-            List<com.redink.model.Page> pages = pagesMap.stream()
+            List<com.redink.model.Page> pages = pagesMap != null ? pagesMap.stream()
                     .map(pageMap -> {
                         com.redink.model.Page page = new com.redink.model.Page();
-                        page.setIndex((Integer) pageMap.get("index"));
+                        Object indexObj = pageMap.get("index");
+                        page.setIndex(indexObj != null ? (Integer) indexObj : 0);
                         page.setType((String) pageMap.get("type"));
                         page.setContent((String) pageMap.get("content"));
                         return page;
                     })
-                    .toList();
+                    .toList() : java.util.Collections.emptyList();
             outline.setPages(pages);
             
             String recordId = historyService.createRecord(topic, outline, taskId);

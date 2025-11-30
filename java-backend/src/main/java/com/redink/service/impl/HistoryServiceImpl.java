@@ -301,19 +301,20 @@ public class HistoryServiceImpl implements HistoryService {
     private void updateIndex(HistoryRecord record, String operation) {
         Map<String, Object> index = loadIndex();
         List<Map<String, Object>> records = (List<Map<String, Object>>) index.get("records");
-        
-        Map<String, Object> indexRecord = Map.of(
-                "id", record.getId(),
-                "title", record.getTitle(),
-                "createdAt", record.getCreatedAt(),
-                "updatedAt", record.getUpdatedAt(),
-                "status", record.getStatus(),
-                "thumbnail", record.getThumbnail(),
-                "pageCount", record.getOutline() != null && record.getOutline().getPages() != null ? 
-                    record.getOutline().getPages().size() : 0,
-                "taskId", record.getImages() != null ? record.getImages().getTaskId() : null
-        );
-        
+
+        Map<String, Object> indexRecord = new HashMap<>();
+        indexRecord.put("id", record.getId());
+        indexRecord.put("title", record.getTitle());
+        indexRecord.put("createdAt", record.getCreatedAt());
+        indexRecord.put("updatedAt", record.getUpdatedAt());
+        indexRecord.put("status", record.getStatus());
+        indexRecord.put("thumbnail", record.getThumbnail());
+        indexRecord.put("pageCount", record.getOutline() != null && record.getOutline().getPages() != null ?
+                record.getOutline().getPages().size() : 0);
+        if (record.getImages() != null && record.getImages().getTaskId() != null) {
+            indexRecord.put("taskId", record.getImages().getTaskId());
+        }
+
         switch (operation) {
             case "create":
                 records.add(0, indexRecord); // 添加到开头
